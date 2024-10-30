@@ -1,8 +1,9 @@
 import { Component, ElementRef, inject,
           AfterViewInit, OnInit,  OnDestroy,
-          Renderer2, ViewChild } from '@angular/core';
+          Renderer2, ViewChild} from '@angular/core';
 import { Router } from '@angular/router';
 import { Trijolo } from './trijolo';
+import { Piramide } from './piramide';
 
 export interface posicao {
   linha: number;
@@ -24,8 +25,12 @@ export class JogoComponent implements OnInit, AfterViewInit, OnDestroy {
   public triangulos!: ElementRef<SVGElement>[];
   public visibilidade: string[] = ["hidden","hidden","visible","visible","visible","visible","hidden","hidden"];
   public pessoas: ElementRef<SVGElement>[] = [];
+  public piramide: Piramide = new Piramide();
 
   constructor(private renderer2: Renderer2) {}
+
+  ngOnInit() {
+  }
 
   ngAfterViewInit(): void {
     let timeoutID = undefined;
@@ -74,6 +79,7 @@ export class JogoComponent implements OnInit, AfterViewInit, OnDestroy {
     });
     this.deixaAsPessoasTransparentes();
     this.caiUmTriangulo();
+
     for (let linha = 0; linha < 8; linha++) {
       let timeoutQuedaID = undefined;
       if (typeof timeoutQuedaID === "number") {
@@ -83,9 +89,6 @@ export class JogoComponent implements OnInit, AfterViewInit, OnDestroy {
         this.trijolo.avancaPosicao(this.triangulos);
       }, 500);
     }
-  }
-
-  ngOnInit() {
   }
 
   ngOnDestroy(): void {
@@ -131,7 +134,6 @@ export class JogoComponent implements OnInit, AfterViewInit, OnDestroy {
       for (let j = 0; j < 15; j++) {
           this.triangulo = this.acessarTriangulo(this.triangulos, i, j);
           if (this.triangulo !== null && this.triangulo.nativeElement.id > '') {
-            this.triangulo.nativeElement.style.visibility = 'hidden';
             this.triangulo.nativeElement.classList.remove('fil0');
             this.triangulo.nativeElement.classList.add('fil_none')
           }
