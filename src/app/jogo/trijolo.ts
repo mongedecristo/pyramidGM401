@@ -37,16 +37,26 @@ export class Trijolo {
   get posicaoFutura(): posicao {
     let colunaRND = Math.floor(7*Math.random());
     colunaRND = 3 - colunaRND;
-    if (Math.abs(colunaRND) > 1) {
-      colunaRND = Math.ceil(colunaRND / 2);
+    const abs = Math.abs(colunaRND);
+    const sgn = Math.sign(colunaRND);
+    if (abs > 1) {
+      colunaRND = sgn;
+    }
+    let proximaColuna = this.posicaoAtual.coluna + colunaRND;
+    let proximaLinha = this.posicaoAtual.linha + 1;
+    if (proximaColuna < 0) {
+      proximaColuna = 0;
+    }
+    if (proximaColuna > 14) {
+      proximaColuna = 14;
+    }
+    if (proximaLinha > 6) {
+      proximaLinha = 7;
     }
     let proximaPosicao: posicao = {
-      linha: this.posicaoAtual.linha + 1,
-      coluna: this.posicaoAtual.coluna + colunaRND
+      linha: proximaLinha,
+      coluna: proximaColuna
     };
-    if (proximaPosicao.linha > 6) {
-      proximaPosicao.linha = 7;
-    }
     console.log("Próxima posição:", proximaPosicao);
     return proximaPosicao;
   }
