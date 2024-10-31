@@ -5,7 +5,7 @@ import { Router } from '@angular/router';
 import { Trijolo } from './trijolo';
 import { Piramide } from './piramide';
 
-export interface posicao {
+export interface Posicao {
   linha: number;
   coluna: number;
 }
@@ -19,33 +19,20 @@ export class JogoComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('tabuleiro') meuTabuleiroSVG!: ElementRef<SVGSVGElement>;
   public router = inject(Router);
   public score: number = 0;
+  public y: number = 0;
   public triangulo!: ElementRef<SVGElement>;
-  public trijolo: Trijolo = new Trijolo();
+  public trijolo!: Trijolo;
   public contador: number = 0;
   public triangulos!: ElementRef<SVGElement>[];
   public visibilidade: string[] = ["hidden","hidden","visible","visible","visible","visible","hidden","hidden"];
   public pessoas: ElementRef<SVGElement>[] = [];
   public piramide: Piramide = new Piramide();
+  public nIntervaloId: any;
 
   constructor(private renderer2: Renderer2) {}
 
-  ngOnInit() {
-  }
-
-  ngAfterViewInit(): void {
-    let timeoutID = undefined;
-    if (typeof timeoutID === "number") {
-      clearTimeout(timeoutID);
-    }
-    timeoutID = setTimeout(() => {
-      this.resetTabuleiro();
-    }, 1000);
-    this.triangulos = Array.from(
-      this.meuTabuleiroSVG.nativeElement.getElementsByTagName('polygon')
-    ).map((polygon) => new ElementRef(polygon));
-    for (let i = 0; i < 8; i++) {
-      this.pessoas[i] = this.triangulos[120 + i];
-    }
+  public comecaJogo() {
+    this.trijolo = new Trijolo();
     this.renderer2.listen(document, 'keydown', (e: KeyboardEvent) => {
       if (e.code == "ArrowLeft") {
         const cabe: boolean = (this.visibilidade[0] == "hidden");
@@ -77,22 +64,61 @@ export class JogoComponent implements OnInit, AfterViewInit, OnDestroy {
       }
       e.preventDefault();
     });
-    this.deixaAsPessoasTransparentes();
     this.caiUmTriangulo();
+    this.nIntervaloId = setInterval(() => {
+      this.jogo();
+      console.log("Entrou no timer principal.");
+    }, 500);
+  }
 
-    for (let linha = 0; linha < 8; linha++) {
-      let timeoutQuedaID = undefined;
-      if (typeof timeoutQuedaID === "number") {
-        clearTimeout(timeoutQuedaID);
-      }
-      timeoutQuedaID = setTimeout(() => {
-        this.trijolo.avancaPosicao(this.triangulos);
-      }, 500);
+  public jogo() {
+    console.log(this.trijolo.toString());
+    this.trijolo.avancaPosicao(this.triangulos);
+    this.y++;
+    if (this.y > 6) {
+      //TODO: Chama pirâmide para teste de colisão
+      this.caiUmTriangulo();
     }
+  }
+
+  public caiUmTriangulo() {
+    this.y = 0;
+    const colunaRND = Math.round(14*Math.random());
+    const posicaoInicial: Posicao = { linha: this.y, coluna: colunaRND };
+    this.trijolo.id = ++this.contador;
+    this.trijolo.triangulo = this.acessarTriangulo(this.triangulos, this.y, colunaRND);
+    this.trijolo.posicaoAtual = posicaoInicial;
+    const fil3 = this.trijolo.triangulo.nativeElement.classList.contains('fil3');
+    if (!fil3) {
+      this.trijolo.triangulo.nativeElement.classList.add('fil3');
+    }
+    console.log("Quantidade de triângulos: ", this.contador);
+  }
+
+  ngOnInit() {
+  }
+
+  ngAfterViewInit(): void {
+    let timeoutID = undefined;
+    if (typeof timeoutID === "number") {
+      clearTimeout(timeoutID);
+    }
+    timeoutID = setTimeout(() => {
+      this.resetTabuleiro();
+    }, 1000);
+    this.triangulos = Array.from(
+      this.meuTabuleiroSVG.nativeElement.getElementsByTagName('polygon')
+    ).map((polygon) => new ElementRef(polygon));
+    for (let i = 0; i < 8; i++) {
+      this.pessoas[i] = this.triangulos[120 + i];
+    }
+    this.deixaAsPessoasTransparentes();
+    this.comecaJogo();
   }
 
   ngOnDestroy(): void {
     this.renderer2.destroy();
+    clearInterval(this.nIntervaloId);
   }
 
   public irParaPagina(uri: string) {
@@ -110,18 +136,6 @@ export class JogoComponent implements OnInit, AfterViewInit, OnDestroy {
       this.score > 0 ? 4 - Math.ceil(Math.log10(this.score)) : 4;
     const zeros: string = '00000'.slice(0, zero);
     return zeros + this.score;
-  }
-
-  public caiUmTriangulo() {
-    const colunaRND = Math.round(14*Math.random());
-    const posicaoInicial: posicao = { linha: 0, coluna: colunaRND };
-
-    this.trijolo = new Trijolo({
-      id: ++this.contador,
-      triangulo: this.acessarTriangulo(this.triangulos, 0, colunaRND),
-      posicaoAtual: posicaoInicial
-    });
-    this.trijolo.triangulo.nativeElement.classList.add('fil3');
   }
 
   private acessarTriangulo(svgElement: ElementRef<SVGElement>[], linha: number, coluna: number): ElementRef<SVGElement> {

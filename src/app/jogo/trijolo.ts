@@ -1,12 +1,12 @@
 import { ElementRef } from "@angular/core";
-import { posicao } from "./jogo.component";
+import { Posicao } from "./jogo.component";
 
 export class Trijolo {
 
   id!: number;
   colisao!: boolean;
-  fixo!: boolean;
-  posicaoAtual!: posicao;
+  fixo: boolean = false;
+  posicaoAtual!: Posicao;
   triangulo!: ElementRef<SVGElement>;
 
   constructor(init?: Partial<Trijolo>) {
@@ -32,9 +32,10 @@ export class Trijolo {
     );
     this.triangulo.nativeElement.classList.remove('fil_none');
     this.triangulo.nativeElement.classList.add('fil3');
+    console.log(this.toString());
   }
 
-  get posicaoFutura(): posicao {
+  get posicaoFutura(): Posicao {
     let colunaRND = Math.floor(7*Math.random());
     colunaRND = 3 - colunaRND;
     const abs = Math.abs(colunaRND);
@@ -53,11 +54,18 @@ export class Trijolo {
     if (proximaLinha > 6) {
       proximaLinha = 7;
     }
-    let proximaPosicao: posicao = {
+    let proximaPosicao: Posicao = {
       linha: proximaLinha,
       coluna: proximaColuna
     };
-    console.log("Próxima posição:", proximaPosicao);
+    if (proximaLinha == 7 && !this.fixo) {
+      this.triangulo.nativeElement.classList.remove('fil3');
+      this.triangulo.nativeElement.classList.add('fil_none');
+    }
     return proximaPosicao;
+  }
+
+  public toString(): string {
+    return `Triângulo ${this.id} - queops_${this.posicaoAtual.linha}_${((this.posicaoAtual.coluna < 10) ? '0' : '')}${this.posicaoAtual.coluna} - classes: [${this.triangulo.nativeElement.classList}]`;
   }
 }
