@@ -6,6 +6,7 @@ export class Trijolo {
   id!: number;
   colisao!: boolean;
   fixo: boolean = false;
+  destruir: boolean = false;
   posicaoAtual!: Posicao;
   triangulo!: ElementRef<SVGElement>;
 
@@ -13,26 +14,45 @@ export class Trijolo {
     Object.assign(this, init);
   }
 
+  /**
+   * String referente ao id dos polygons do SVG (triângulos)
+   */
+  public queops(posicao: Posicao): string {
+    return 'queops_' + posicao.linha.toString() +
+      '_' + (posicao.coluna < 10 ? '0' : '') +
+      posicao.coluna.toString();
+  }
+
   public avancaPosicao(ref: ElementRef<SVGElement>[]): void {
-    let q = 'queops_' + this.posicaoAtual.linha.toString() + '_' +
-      (this.posicaoAtual.coluna < 10 ? '0' : '') +
-      this.posicaoAtual.coluna.toString();
+    let q = this.queops(this.posicaoAtual);
     this.triangulo= <NonNullable<ElementRef<SVGElement>>> (ref.find(
       (queops) => queops.nativeElement.id == q)
     );
     this.triangulo.nativeElement.classList.remove('fil3');
     this.triangulo.nativeElement.classList.add('fil_none');
 
-    this.posicaoAtual = this.posicaoFutura;
-    q = 'queops_' + this.posicaoAtual.linha.toString() + '_' +
-      (this.posicaoAtual.coluna < 10 ? '0' : '') +
-      this.posicaoAtual.coluna.toString();
-    this.triangulo= <NonNullable<ElementRef<SVGElement>>> (ref.find(
-      (queops) => queops.nativeElement.id == q)
-    );
-    this.triangulo.nativeElement.classList.remove('fil_none');
-    this.triangulo.nativeElement.classList.add('fil3');
-    console.log(this.toString());
+    if (this.posicaoAtual.linha == 7) {
+      if (this.fixo) {
+        //TODO: Prepara para teste de colisão
+      } else {
+        // Triângulo perdido
+        this.triangulo.nativeElement.classList.remove('fil3');
+        this.triangulo.nativeElement.classList.add('fil_none');
+        console.log(`Triângulo ${this.id} bateu no fundo.`)
+        // TODO: Destruir triângulo
+        this.triangulo.nativeElement.style.visibility = 'hidden';
+        this.destruir = true;
+      }
+    } else {
+      this.posicaoAtual = this.posicaoFutura;
+      q = this.queops(this.posicaoAtual);
+      this.triangulo= <NonNullable<ElementRef<SVGElement>>> (ref.find(
+        (queops) => queops.nativeElement.id == q)
+      );
+      this.triangulo.nativeElement.classList.remove('fil_none');
+      this.triangulo.nativeElement.classList.add('fil3');
+    }
+    //console.log(this.toString());
   }
 
   get posicaoFutura(): Posicao {
@@ -58,10 +78,6 @@ export class Trijolo {
       linha: proximaLinha,
       coluna: proximaColuna
     };
-    if (proximaLinha == 7 && !this.fixo) {
-      this.triangulo.nativeElement.classList.remove('fil3');
-      this.triangulo.nativeElement.classList.add('fil_none');
-    }
     return proximaPosicao;
   }
 

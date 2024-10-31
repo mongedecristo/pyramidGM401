@@ -67,17 +67,18 @@ export class JogoComponent implements OnInit, AfterViewInit, OnDestroy {
     this.caiUmTriangulo();
     this.nIntervaloId = setInterval(() => {
       this.jogo();
-      console.log("Entrou no timer principal.");
     }, 500);
   }
 
   public jogo() {
-    console.log(this.trijolo.toString());
     this.trijolo.avancaPosicao(this.triangulos);
     this.y++;
     if (this.y > 6) {
       //TODO: Chama pirâmide para teste de colisão
-      this.caiUmTriangulo();
+      if (this.trijolo.destruir) {
+        this.trijolo = new Trijolo();
+        this.caiUmTriangulo();
+      }
     }
   }
 
