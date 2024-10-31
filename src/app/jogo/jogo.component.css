@@ -31,7 +31,7 @@ html,body {
 }
 
 .fil0 {
-  fill: rgba(204, 204, 204, .05);
+  fill: rgba(204, 204, 204, .01);
 }
 
 div#cabecalho {

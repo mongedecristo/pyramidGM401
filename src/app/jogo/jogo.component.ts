@@ -73,7 +73,7 @@ export class JogoComponent implements OnInit, AfterViewInit, OnDestroy {
   public jogo() {
     this.trijolo.avancaPosicao(this.triangulos);
     this.y++;
-    if (this.y > 6) {
+    if (this.y >= 7) {
       //TODO: Chama pirâmide para teste de colisão
       if (this.trijolo.destruir) {
         this.trijolo = new Trijolo();

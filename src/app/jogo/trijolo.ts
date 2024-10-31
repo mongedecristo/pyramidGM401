@@ -15,7 +15,8 @@ export class Trijolo {
   }
 
   /**
-   * String referente ao id dos polygons do SVG (triângulos)
+   * String referente aos id's
+   * dos polygons do SVG (triângulos)
    */
   public queops(posicao: Posicao): string {
     return 'queops_' + posicao.linha.toString() +
@@ -31,15 +32,13 @@ export class Trijolo {
     this.triangulo.nativeElement.classList.remove('fil3');
     this.triangulo.nativeElement.classList.add('fil_none');
 
-    if (this.posicaoAtual.linha == 7) {
+    if (this.posicaoAtual.linha >= 7) {
       if (this.fixo) {
         //TODO: Prepara para teste de colisão
       } else {
-        // Triângulo perdido
         this.triangulo.nativeElement.classList.remove('fil3');
         this.triangulo.nativeElement.classList.add('fil_none');
         console.log(`Triângulo ${this.id} bateu no fundo.`)
-        // TODO: Destruir triângulo
         this.triangulo.nativeElement.style.visibility = 'hidden';
         this.destruir = true;
       }
@@ -82,6 +81,6 @@ export class Trijolo {
   }
 
   public toString(): string {
-    return `Triângulo ${this.id} - queops_${this.posicaoAtual.linha}_${((this.posicaoAtual.coluna < 10) ? '0' : '')}${this.posicaoAtual.coluna} - classes: [${this.triangulo.nativeElement.classList}]`;
+    return `Triângulo ${this.id} - ${this.queops(this.posicaoAtual)} - classes: [${this.triangulo.nativeElement.classList}]`;
   }
 }
