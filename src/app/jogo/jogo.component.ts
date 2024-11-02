@@ -20,19 +20,21 @@ export class JogoComponent implements OnInit, AfterViewInit, OnDestroy {
   public router = inject(Router);
   public score: number = 0;
   public y: number = 0;
+  public x: number = 2;
   public triangulo!: ElementRef<SVGElement>;
   public trijolo!: Trijolo;
   public contador: number = 0;
   public triangulos!: ElementRef<SVGElement>[];
   public visibilidade: string[] = ["hidden","hidden","visible","visible","visible","visible","hidden","hidden"];
   public pessoas: ElementRef<SVGElement>[] = [];
-  public piramide: Piramide = new Piramide();
+  public piramide!: Piramide;
   public nIntervaloId: any;
 
   constructor(private renderer2: Renderer2) {}
 
   public comecaJogo() {
     this.trijolo = new Trijolo();
+    this.piramide = new Piramide({ eixoX: this.x});
     this.renderer2.listen(document, 'keydown', (e: KeyboardEvent) => {
       if (e.code == "ArrowLeft") {
         const cabe: boolean = (this.visibilidade[0] == "hidden");
@@ -41,6 +43,11 @@ export class JogoComponent implements OnInit, AfterViewInit, OnDestroy {
           primeiroItem += this.visibilidade.shift();
           this.visibilidade.push(primeiroItem);
           this.deixaAsPessoasTransparentes();
+          this.x--;
+          if (this.x <= 0) {
+            this.x = 0;
+          }
+          this.piramide.eixoX = this.x;
         }
       }
       if (e.code == "ArrowRight") {
@@ -57,10 +64,16 @@ export class JogoComponent implements OnInit, AfterViewInit, OnDestroy {
           const item7 = this.visibilidade[7];
           this.visibilidade = [item7, item0, item1, item2, item3, item4, item5, item6];
           this.deixaAsPessoasTransparentes();
+          this.x++;
+          if (this.x >= 4) {
+            this.x = 4;
+          }
+          this.piramide.eixoX = this.x;
         }
       }
       if (e.code == "Space") {
         console.log('Você clicou na Barra de Espaço');
+        console.log("Eixo X da pirâmide: ", this.piramide.eixoX);
       }
       e.preventDefault();
     });
