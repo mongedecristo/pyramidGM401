@@ -4,11 +4,12 @@ import { Posicao } from "./jogo.component";
 export class Trijolo {
 
   id!: number;
-  colisao!: boolean;
+  colisao: boolean = false;
   fixo: boolean = false;
   destruir: boolean = false;
   posicaoAtual!: Posicao;
   triangulo!: ElementRef<SVGElement>;
+  orientacao: 'up' | 'down' = 'up'; // up = vértice pra cima, down = vértice pra baixo
 
   constructor(init?: Partial<Trijolo>) {
     Object.assign(this, init);
@@ -33,28 +34,23 @@ export class Trijolo {
     this.triangulo.nativeElement.classList.add('fil_none');
 
     if (this.posicaoAtual.linha >= 7) {
-      if (this.fixo) {
-        //TODO: Prepara para teste de colisão
-      } else {
-        this.triangulo.nativeElement.classList.remove('fil3');
-        this.triangulo.nativeElement.classList.add('fil_none');
-        console.log(`Triângulo ${this.id} bateu no fundo.`)
-        this.triangulo.nativeElement.style.visibility = 'hidden';
-        this.destruir = true;
-      }
+      this.triangulo.nativeElement.classList.remove('fil3');
+      this.triangulo.nativeElement.classList.add('fil_none');
+      console.log(`Triângulo ${this.id} bateu no fundo.`)
+      this.triangulo.nativeElement.style.visibility = 'hidden';
+      this.destruir = true;
     } else {
       this.posicaoAtual = this.posicaoFutura;
       q = this.queops(this.posicaoAtual);
-      this.triangulo= <NonNullable<ElementRef<SVGElement>>> (ref.find(
-        (queops) => queops.nativeElement.id == q)
-      );
+      this.triangulo= <NonNullable<ElementRef<SVGElement>>> (ref.find((queops) => queops.nativeElement.id == q));
       this.triangulo.nativeElement.classList.remove('fil_none');
       this.triangulo.nativeElement.classList.add('fil3');
+      this.destruir = false;
     }
-    //console.log(this.toString());
   }
 
   get posicaoFutura(): Posicao {
+    let proximaPosicao: Posicao = {} as Posicao;
     let colunaRND = Math.floor(7*Math.random());
     colunaRND = 3 - colunaRND;
     const abs = Math.abs(colunaRND);
@@ -73,10 +69,8 @@ export class Trijolo {
     if (proximaLinha > 6) {
       proximaLinha = 7;
     }
-    let proximaPosicao: Posicao = {
-      linha: proximaLinha,
-      coluna: proximaColuna
-    };
+    proximaPosicao.linha = proximaLinha;
+    proximaPosicao.coluna = proximaColuna;
     return proximaPosicao;
   }
 
