@@ -117,49 +117,51 @@ export class JogoComponent implements AfterViewInit, OnDestroy {
   }
 
   public jogo() {
-    this.trijolo.avancaPosicao(this.triangulos);
-    this.y++;
-    if (this.y >= 7) {
-      if (this.detectaColisao(this.trijolo.posicaoAtual)) {
-        console.log(`Triângulo ${this.trijolo.id} colidiu na posição linha ${this.trijolo.posicaoAtual.linha}, coluna ${this.trijolo.posicaoAtual.coluna}`);
-        this.trijoloColidiu();
-      }
-      if (this.trijolo.destruir) {
-        this.trijolo = new Trijolo();
-        this.caiUmNovoTriangulo();
-      }
+    if (this.avancaQueda()) {
+      this.trijolo = new Trijolo();
+      this.caiUmNovoTriangulo();
     }
   }
 
   private detectaColisao(proximaPosicao: Posicao): boolean {
-    // Só faz sentido detectar colisão se estiver horizontalmente sobre a área da pirâmide
-    if (!this.piramide.isColumnInside(proximaPosicao.coluna)) return false;
+    // O teste ocorre antes de desenhar o trijolo na próxima célula. Assim, ele
+    // para no primeiro nível que possa sustentá-lo (linhas 4 a 7).
+    if (proximaPosicao.linha < 4 || proximaPosicao.linha > 7) return false;
 
-    // A pirâmide ocupa as linhas 4..7 (quartoAndar..terreo).
-    // Quando o triângulo chega em qualquer uma dessas linhas, verificar se pode ser
-    // colocado naquela coluna. Se não couber exatamente, tentar deslizar para
-    // colunas adjacentes próximas (esquerda/direita) para simular o "deslizar".
-    if (proximaPosicao.linha >= 4) {
-      // tenta na própria coluna
-      if (this.piramide.podeColocar(proximaPosicao)) return true;
+    // Mesmo se estiver ligeiramente fora da área, o trijolo pode deslizar para
+    // dentro de um encaixe válido. A própria pirâmide valida os limites.
+    const shifts = [0, -1, 1, -2, 2];
+    for (const deslocamento of shifts) {
+      const candidata: Posicao = {
+        linha: proximaPosicao.linha,
+        coluna: proximaPosicao.coluna + deslocamento,
+      };
 
-      // tenta deslizar para colunas próximas (ordem: esquerda, direita, mais longe)
-      const shifts = [-1, 1, -2, 2];
-      for (const s of shifts) {
-        const col = proximaPosicao.coluna + s;
-        if (!this.piramide.isColumnInside(col)) continue;
-        const testPos: Posicao = { linha: proximaPosicao.linha, coluna: col };
-        if (this.piramide.podeColocar(testPos)) {
-          // atualiza a posição atual do trijolo para refletir o deslize
-          if (this.trijolo && this.trijolo.posicaoAtual) {
-            this.trijolo.posicaoAtual.coluna = col;
-          }
-          return true;
-        }
-      }
+      if (!this.piramide.podeColocar(candidata)) continue;
+
+      this.trijolo.posicaoAtual = candidata;
+      return true;
     }
 
     return false;
+  }
+
+  /**
+   * Processa um passo de queda. Retorna true quando o trijolo atual foi
+   * fixado ou saiu do tabuleiro e, portanto, deve ser substituído.
+   */
+  private avancaQueda(): boolean {
+    const proximaPosicao = this.trijolo.posicaoFutura;
+
+    if (this.detectaColisao(proximaPosicao)) {
+      console.log(`Triângulo ${this.trijolo.id} colidiu na posição linha ${this.trijolo.posicaoAtual.linha}, coluna ${this.trijolo.posicaoAtual.coluna}`);
+      this.trijoloColidiu();
+      return true;
+    }
+
+    this.trijolo.avancaPosicao(this.triangulos);
+    this.y = this.trijolo.posicaoAtual.linha;
+    return this.trijolo.destruir;
   }
 
   public trijoloColidiu() {
@@ -226,14 +228,12 @@ export class JogoComponent implements AfterViewInit, OnDestroy {
     if (this.nIntervaloId) {
       clearInterval(this.nIntervaloId);
     }
-    while (!this.trijolo.destruir) {
-      this.trijolo.avancaPosicao(this.triangulos);
-      this.y++;
+    while (!this.avancaQueda()) {
+      // A queda completa usa exatamente a mesma detecção antecipada da queda normal.
     }
-    if (this.detectaColisao(this.trijolo.posicaoAtual)) {
-      console.log(`Triângulo ${this.trijolo.id} colidiu na posição linha ${this.trijolo.posicaoAtual.linha}, coluna ${this.trijolo.posicaoAtual.coluna}`);
-      this.trijoloColidiu();
-    }
+
+    this.trijolo = new Trijolo();
+    this.caiUmNovoTriangulo();
 
     // Reinicia o intervalo de queda lenta para o próximo trijolo
     this.nIntervaloId = setInterval(() => {

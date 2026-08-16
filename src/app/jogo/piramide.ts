@@ -15,7 +15,9 @@ export class Piramide {
   quartoAndar: boolean = false;
   terceiroAndar: boolean[] = [false, false, false];
   segundoAndar: boolean[] = [false, false, false, false, false];
-  terreo: boolean[] = [true, true, false, false, false, false, false];
+  // Os sete espaços do térreo começam vazios. Eles são sustentados pela base
+  // formada pelas quatro pessoas, não por trijolos já existentes.
+  terreo: boolean[] = [false, false, false, false, false, false, false];
 
   constructor(init?: Partial<Piramide>) {
     Object.assign(this, init);
@@ -29,6 +31,14 @@ export class Piramide {
   }
 
   /**
+   * A base visual possui quatro pessoas e sustenta os sete encaixes da base da
+   * pirâmide (dois extremos e cinco intervalos entre elas).
+   */
+  public isSupportedByPeople(posicao: Posicao): boolean {
+    return posicao.linha === 7 && this.isColumnInside(posicao.coluna);
+  }
+
+  /**
    * Verifica sem alterar o estado se um trijolo na posição informada pode ser colocado
    * no nível correto da pirâmide de acordo com a linha do SVG.
    */
@@ -37,7 +47,7 @@ export class Piramide {
     if (colIndex < 0 || colIndex > 6) return false;
     switch (posicao.linha) {
       case 7:
-        return !this.terreo[colIndex];
+        return this.isSupportedByPeople(posicao) && !this.terreo[colIndex];
       case 6: {
         const segundoIndex = colIndex - 1;
         return segundoIndex >= 0 && segundoIndex <= 4 && !this.segundoAndar[segundoIndex] && this.terreo[segundoIndex] && this.terreo[segundoIndex + 1];
@@ -63,7 +73,7 @@ export class Piramide {
     if (colIndex < 0 || colIndex > 6) return colocado;
     switch (posicao.linha) {
       case 7:
-        if (!this.terreo[colIndex]) {
+        if (this.isSupportedByPeople(posicao) && !this.terreo[colIndex]) {
           this.terreo[colIndex] = true;
           colocado.colocado = true;
           colocado.layer = 'terreo';
