@@ -1,4 +1,5 @@
 import { Andar, Piramide } from './piramide';
+import {} from 'jasmine';
 
 /**
  * As regras de encaixe da pirâmide, exercitadas sem DOM. São elas que definem

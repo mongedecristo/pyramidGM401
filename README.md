@@ -1,92 +1,90 @@
-# Pyramid GM401
+# 🛸 Pyramid GM401
 
-Um remake, em Angular, do jogo **Pyramid** do relógio de pulso CASIO GM401. A proposta é recriar a experiência visual do portátil com um tabuleiro em SVG: enquanto óvnis ilustrativos cruzam o céu, os triângulos caem e a base de pessoas se desloca para construir uma pirâmide.
+Uma versão web, feita em Angular, do **Pyramid** do relógio Casio GM-401. A ideia é simples e gostosa de jogar: mova a base de quatro pessoas, receba os triângulos que caem do céu e tente montar a maior pirâmide possível. ⏱️🔺
 
-> Os óvnis são apenas elementos de ambientação. Eles sugerem de onde vêm os triângulos, mas não interferem na jogabilidade.
+Os OVNIs estão ali pelo clima — eles não alteram as regras. 👽
 
-## Como jogar
+## 🎮 Como jogar
 
-Controle a base formada por quatro pessoas para receber os triângulos, chamados no código de **trijolos** ("tijolos" triangulares). Use as setas do teclado para mover a base e a pirâmide já montada:
-
-| Tecla | Ação |
+| Tecla | Faz o quê? |
 | --- | --- |
-| `ArrowLeft` | Move a base para a esquerda |
-| `ArrowRight` | Move a base para a direita |
-| `Space` | Acelera a queda do trijolo atual |
+| `←` | Move a base e a pirâmide para a esquerda |
+| `→` | Move a base e a pirâmide para a direita |
+| `Espaço` | Faz o triângulo atual cair de uma vez |
 
-Cada trijolo cai com uma pequena variação horizontal. Ao encontrar a base ou a estrutura já formada, ele deve se fixar em um encaixe válido; se ficar fora da área útil, desaparece. A meta é preencher uma pirâmide de quatro andares, alternando triângulos com o vértice para cima e para baixo.
+Os triângulos (carinhosamente chamados no código de **trijolos**) caem em posições aleatórias. Quando encontram um encaixe válido, eles podem deslizar um pouco para o lado e se acomodar na pirâmide. Se caírem fora, você perde uma vida.
 
-Uma pirâmide totalmente preenchida possui **16 trijolos**:
+Você começa com **3 vidas**. A partida acaba quando elas chegam a zero ou quando não existe mais nenhum encaixe possível na pirâmide.
 
-- 1º andar: 7 trijolos (4 para cima e 3 para baixo);
-- 2º andar: 5 trijolos (3 para cima e 2 para baixo);
-- 3º andar: 3 trijolos (2 para cima e 1 para baixo);
-- topo: 1 trijolo.
+## 🧱 A missão
 
-O jogo também pode terminar antes disso quando a estrutura não comportar outro encaixe, formando uma pirâmide “vazada”.
+A pirâmide tem quatro andares e **16 encaixes** no total:
 
-## Pontuação planejada
+| Andar | Trijolos |
+| --- | ---: |
+| Base | 7 |
+| 2º andar | 5 |
+| 3º andar | 3 |
+| Topo | 1 |
 
-A regra de pontuação desejada é:
+Os triângulos alternam entre ponta para cima e ponta para baixo. Os que apontam para baixo precisam dos vizinhos certos para ter apoio; os de ponta para cima formam a estrutura que permite subir de andar. Dá para fechar uma pirâmide completa ou terminar com uma versão “vazada”.
 
-- 1 ponto para cada trijolo apoiado diretamente sobre as pessoas, com vértice para cima;
-- 2 pontos para cada trijolo encaixado na pirâmide com vértice para baixo;
-- bônus para cada um dos três primeiros andares completos;
-- bônus extra para uma pirâmide formada apenas por 10 trijolos com vértice para cima;
-- bônus máximo para a pirâmide completa, com 16 trijolos.
+## 🏆 Pontuação
 
-## Estado atual
+| Evento | Pontos |
+| --- | ---: |
+| Trijolo com ponta para cima | +1 |
+| Trijolo com ponta para baixo | +2 |
+| Base completa | +10 |
+| 2º andar completo | +20 |
+| 3º andar completo | +30 |
+| Pirâmide vazada só com pontas para cima | +50 |
+| Pirâmide completa | +100 |
 
-O deslocamento da base pelas teclas `ArrowLeft` e `ArrowRight` já está implementado. A queda dos trijolos também está simulada no tabuleiro SVG, com variação no eixo horizontal.
+Os bônus são concedidos uma única vez por partida. Boa sorte para chegar ao topo! ✨
 
-O principal ponto em evolução é a detecção de colisão em `detectaColisao()`: ainda é necessário aperfeiçoar o pouso na base, a fixação na pirâmide e o deslizamento lateral — tanto para um trijolo cair fora quanto para encontrar um encaixe interno. Por isso, as regras completas de orientação, fim de jogo e bônus descritas acima representam o comportamento-alvo do remake.
+## 🚀 Rodando o projeto
 
-## Tecnologias
-
-- [Angular 18](https://angular.dev/) e TypeScript para a aplicação;
-- SVG para o tabuleiro, os trijolos, as pessoas e os óvnis;
-- Bootstrap 5 para estilos e componentes de interface;
-- Angular SSR com Express para renderização no servidor;
-- Karma e Jasmine para testes unitários.
-
-## Estrutura da lógica do jogo
-
-O núcleo está em [`src/app/jogo/jogo.component.ts`](src/app/jogo/jogo.component.ts). O componente controla o ciclo de queda, eventos do teclado, visibilidade dos elementos SVG e a pontuação. A classe [`Trijolo`](src/app/jogo/trijolo.ts) representa o triângulo que está caindo, enquanto `Piramide` mantém as posições ocupadas da construção.
-
-O tabuleiro está em [`src/app/jogo/jogo.component.html`](src/app/jogo/jogo.component.html): cada posição de triângulo é um `<polygon>` SVG previamente definido. A animação é feita ao ocultar o triângulo da posição anterior e exibir o da próxima posição na matriz do tabuleiro.
-
-## Como executar
-
-### Pré-requisitos
-
-- Node.js (recomenda-se uma versão LTS compatível com Angular 18);
-- npm.
-
-### Instalação e servidor de desenvolvimento
+Você vai precisar do [Node.js](https://nodejs.org/) (de preferência uma versão LTS compatível com Angular 18) e do npm.
 
 ```bash
 npm install
 npm start
 ```
 
-Abra `http://localhost:4200/` no navegador. A aplicação é recarregada automaticamente ao alterar os arquivos-fonte.
+Depois, abra [http://localhost:4200](http://localhost:4200) no navegador. As alterações no código recarregam a aplicação automaticamente.
 
-### Outros comandos
+### Outros comandos úteis
 
 ```bash
 # Gerar a versão de produção em dist/pyramid-gm401
 npm run build
 
-# Executar os testes unitários
+# Rodar os testes unitários
 npm test
 
 # Acompanhar builds de desenvolvimento
 npm run watch
 
-# Servir a aplicação SSR depois de gerar o build
+# Servir a versão SSR após gerar o build
 npm run serve:ssr:PyramidGM401
 ```
 
-## Contribuições
+## 🧰 Feito com
 
-Contribuições são bem-vindas, em especial para a física/colisão dos trijolos, os encaixes por orientação, as condições de fim de jogo e a pontuação com bônus. Antes de enviar uma mudança, execute `npm run build` e, quando aplicável, `npm test`.
+- [Angular 18](https://angular.dev/) e TypeScript;
+- SVG para o tabuleiro, os trijolos, as pessoas e os OVNIs;
+- Bootstrap 5 para a interface;
+- Angular SSR + Express;
+- Karma e Jasmine nos testes.
+
+## 🗂️ Onde fica cada coisa?
+
+- [`src/app/jogo/jogo.component.ts`](src/app/jogo/jogo.component.ts): controla teclado, queda, vidas, placar e o ciclo da partida.
+- [`src/app/jogo/piramide.ts`](src/app/jogo/piramide.ts): concentra as regras dos encaixes, do apoio entre trijolos e dos estados da pirâmide.
+- [`src/app/jogo/trijolo.ts`](src/app/jogo/trijolo.ts): representa o triângulo que está caindo.
+- [`src/app/jogo/jogo.component.html`](src/app/jogo/jogo.component.html): contém o tabuleiro SVG.
+
+## 🤝 Contribuições
+
+Ideias, correções e melhorias são bem-vindas! Antes de enviar uma mudança, rode `npm run build` e, quando fizer sentido, `npm test`. 🎯
