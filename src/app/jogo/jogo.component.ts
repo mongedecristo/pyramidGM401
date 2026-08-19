@@ -69,6 +69,12 @@ export class JogoComponent implements AfterViewInit, OnDestroy {
   public nIntervaloId: any;
   public posicoesOcupadas: Posicao[] = []; // Adicionado para rastrear a pirâmide
 
+  /** Vidas iniciais. Cada trijolo que cai no chão sem encaixar consome uma. */
+  public readonly VIDAS_INICIAIS = 3;
+  public vidas: number = this.VIDAS_INICIAIS;
+  public fimDeJogo: boolean = false;
+  public motivoFimDeJogo: string = '';
+
   constructor(private renderer2: Renderer2) {}
 
   /**
@@ -89,6 +95,7 @@ export class JogoComponent implements AfterViewInit, OnDestroy {
     this.trijolo = new Trijolo();
     this.piramide = new Piramide({ eixoX: this.colunaDaPessoa(this.x) });
     this.renderer2.listen(document, 'keydown', (e: KeyboardEvent) => {
+      if (this.fimDeJogo) return;
       if (e.code === 'ArrowLeft') {
         // só permite mover para a esquerda se houver espaço
         if (this.x > 0) {
@@ -161,10 +168,51 @@ export class JogoComponent implements AfterViewInit, OnDestroy {
   }
 
   public jogo() {
+    if (this.fimDeJogo) return;
     if (this.avancaQueda()) {
-      this.trijolo = new Trijolo();
-      this.caiUmNovoTriangulo();
+      this.substituiTrijolo();
     }
+  }
+
+  /**
+   * Troca o trijolo que terminou a queda. Se ele não foi fixado na pirâmide,
+   * caiu no chão e custa uma vida.
+   */
+  private substituiTrijolo() {
+    if (!this.trijolo.fixo) {
+      this.perdeUmaVida();
+    }
+    // Cobre as duas saídas: vidas zeradas aqui em cima e pirâmide travada,
+    // detectada ao fixar o trijolo. Sem isto, a partida encerrada ainda soltava
+    // mais um trijolo na tela.
+    if (this.fimDeJogo) return;
+    this.trijolo = new Trijolo();
+    this.caiUmNovoTriangulo();
+  }
+
+  private perdeUmaVida() {
+    this.vidas--;
+    console.log(`Trijolo perdido. Vidas restantes: ${this.vidas}`);
+    if (this.vidas <= 0) {
+      this.vidas = 0;
+      this.encerraPartida('Acabaram as vidas.');
+    }
+  }
+
+  /**
+   * Encerra a partida: para a queda e trava os comandos. As duas condições de
+   * fim são a pirâmide travada (nenhum encaixe aceita mais trijolo) e as vidas
+   * zeradas.
+   */
+  private encerraPartida(motivo: string) {
+    if (this.fimDeJogo) return;
+    this.fimDeJogo = true;
+    this.motivoFimDeJogo = motivo;
+    if (this.nIntervaloId) {
+      clearInterval(this.nIntervaloId);
+      this.nIntervaloId = undefined;
+    }
+    console.log(`FIM DE JOGO — ${motivo} Score final: ${this.score}`);
   }
 
   private detectaColisao(proximaPosicao: Posicao): boolean {
@@ -260,6 +308,21 @@ export class JogoComponent implements AfterViewInit, OnDestroy {
 
     console.log('Score: ', this.score);
     console.log('Posições ocupadas: ', this.posicoesOcupadas);
+
+    // Fim de partida por pirâmide travada: verificado depois de cada trijolo
+    // fixado, porque é só aí que o conjunto de encaixes livres muda.
+    if (this.piramide.travada) {
+      this.encerraPartida(this.descreveFimPorPiramide());
+    }
+  }
+
+  private descreveFimPorPiramide(): string {
+    if (this.piramide.cheiaCompleta) return 'Pirâmide completa!';
+    if (this.piramide.cheiaSoParaCima) return 'Pirâmide cheia vazada, só com vértices pra cima!';
+    if (this.piramide.cheiaVazada) {
+      return `Pirâmide cheia vazada, faltando ${this.piramide.faltamParaBaixo} vértice(s) pra baixo.`;
+    }
+    return 'Não cabe mais nenhum trijolo na pirâmide.';
   }
 
   /**
@@ -272,12 +335,12 @@ export class JogoComponent implements AfterViewInit, OnDestroy {
     if (bonusDoAndar && this.piramide.andarCompleto(andar)) {
       this.concedeBonus(`andar:${andar}`, bonusDoAndar);
     }
-    // A vazada deixa de ser verdadeira no instante em que entra um trijolo de
-    // vértice pra baixo, por isso ela é testada a cada colocação.
-    if (this.piramide.cheiaVazada) {
+    // Só a vazada pura (nenhum vértice pra baixo) leva bônus. Uma cheia vazada
+    // com alguns vértices pra baixo encerra a partida sem bônus de pirâmide.
+    if (this.piramide.cheiaSoParaCima) {
       this.concedeBonus('vazada', this.BONUS_SO_PARA_CIMA);
     }
-    if (this.piramide.cheia) {
+    if (this.piramide.cheiaCompleta) {
       this.concedeBonus('completa', this.BONUS_PIRAMIDE_COMPLETA);
     }
   }
@@ -290,15 +353,17 @@ export class JogoComponent implements AfterViewInit, OnDestroy {
   }
 
   public quedaCompleta() {
+    if (this.fimDeJogo) return;
     if (this.nIntervaloId) {
       clearInterval(this.nIntervaloId);
+      this.nIntervaloId = undefined;
     }
     while (!this.avancaQueda()) {
       // A queda completa usa exatamente a mesma detecção antecipada da queda normal.
     }
 
-    this.trijolo = new Trijolo();
-    this.caiUmNovoTriangulo();
+    this.substituiTrijolo();
+    if (this.fimDeJogo) return;
 
     // Reinicia o intervalo de queda lenta para o próximo trijolo
     this.nIntervaloId = setInterval(() => {
@@ -387,6 +452,11 @@ export class JogoComponent implements AfterViewInit, OnDestroy {
     }
   }
 
+  /** Vidas restantes no visual do relógio: um triângulo aceso por vida. */
+  public mostraVidas(): string {
+    return '▲'.repeat(this.vidas) + '△'.repeat(Math.max(0, this.VIDAS_INICIAIS - this.vidas));
+  }
+
   public mostraScore(): string {
     const zero: number = this.score > 0 ? 4 - Math.floor(Math.log10(this.score)) : 4;
     const zeros: string = '00000'.slice(0, zero);
@@ -414,9 +484,7 @@ export class JogoComponent implements AfterViewInit, OnDestroy {
     // Esconde todos os triângulos da pirâmide em qualquer posição antes de mostrar a nova
     this.escondeTriangulosDaPiramide();
 
-    // A geometria de cada andar (linha, offset e largura) vive só em
-    // Piramide.ANDARES. Repeti-la aqui foi a origem do desalinhamento entre a
-    // pirâmide e as pessoas.
+    // A geometria de cada andar (linha, offset e largura) vive só em Piramide.ANDARES
     for (const def of Piramide.ANDARES) {
       for (let i = 0; i < def.largura; i++) {
         if (!this.piramide.ocupado(def.andar, i)) continue;
@@ -431,12 +499,6 @@ export class JogoComponent implements AfterViewInit, OnDestroy {
           tri.nativeElement.style.visibility = 'visible';
         }
       }
-    }
-    if (this.piramide.cheia) {
-      console.log('PIRÂMIDE CHEIA!!!');
-    }
-    if (this.piramide.cheiaVazada) {
-      console.log('PIRÂMIDE CHEIA VAZADA!!!');
     }
   }
 

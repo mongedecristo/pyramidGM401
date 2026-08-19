@@ -2,8 +2,16 @@
   <div class="flex-items jersey-10-charted-regular ps-2" id="score">
     {{ mostraScore() }}
   </div>
+  <div class="flex-items jersey-10-charted-regular" id="vidas">
+    {{ mostraVidas() }}
+  </div>
   <div class="flex-items" id="msg">
-    Use as Setas para Esquerda e para a Direita para se Mover
+    <ng-container *ngIf="fimDeJogo; else instrucoes">
+      FIM DE JOGO — {{ motivoFimDeJogo }}
+    </ng-container>
+    <ng-template #instrucoes>
+      Use as Setas para Esquerda e para a Direita para se Mover
+    </ng-template>
   </div>
   <div class="flex-items pe-2" id="botao">
       <button class="custom-btn btn6" (click)="irParaPagina('')">

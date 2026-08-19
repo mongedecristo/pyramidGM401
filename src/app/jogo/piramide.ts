@@ -112,8 +112,30 @@ export class Piramide {
   public podeColocar(posicao: Posicao): boolean {
     const encaixe = this.encaixeDe(posicao);
     if (!encaixe) return false;
-    if (this.ocupado(encaixe.andar, encaixe.index)) return false;
-    return this.temSuporte(encaixe.andar, encaixe.index);
+    return this.livreParaReceber(encaixe.andar, encaixe.index);
+  }
+
+  /**
+   * Um encaixe só aceita trijolo se estiver vazio, tiver apoio e ainda for
+   * alcançável de cima. É o soterramento que cria as pirâmides travadas: o
+   * trijolo desce interstício a interstício, então um vão coberto pelo
+   * triângulo de cima nunca mais recebe nada, mesmo tendo apoio.
+   */
+  public livreParaReceber(andar: Andar, index: number): boolean {
+    if (this.ocupado(andar, index)) return false;
+    if (this.soterrado(andar, index)) return false;
+    return this.temSuporte(andar, index);
+  }
+
+  /**
+   * O encaixe imediatamente acima (mesma coluna, andar de cima) é o de índice
+   * `index - 1`, porque cada andar começa uma coluna à direita do de baixo.
+   * Ele tem sempre a orientação oposta: um vão de vértice pra baixo é soterrado
+   * pelo triângulo de vértice pra cima que se apoia sobre ele.
+   */
+  public soterrado(andar: Andar, index: number): boolean {
+    const acima = Piramide.andarAcima(andar);
+    return acima !== undefined && this.ocupado(acima, index - 1);
   }
 
   /**
@@ -182,20 +204,80 @@ export class Piramide {
     return i > 0 ? Piramide.ANDARES[i - 1].andar : undefined;
   }
 
+  private static andarAcima(andar: Andar): Andar | undefined {
+    const i = Piramide.ANDARES.findIndex((def) => def.andar === andar);
+    return i < Piramide.ANDARES.length - 1 ? Piramide.ANDARES[i + 1].andar : undefined;
+  }
+
+  /** Percorre todos os encaixes da pirâmide, do térreo ao topo. */
+  private *encaixes(): Generator<Encaixe> {
+    for (const def of Piramide.ANDARES) {
+      for (let index = 0; index < def.largura; index++) {
+        yield { andar: def.andar, index };
+      }
+    }
+  }
+
+  /** Quantidade de trijolos de vértice pra baixo já encaixados. */
+  get quantidadeParaBaixo(): number {
+    let total = 0;
+    for (const e of this.encaixes()) {
+      if (!Piramide.paraCima(e.index) && this.ocupado(e.andar, e.index)) total++;
+    }
+    return total;
+  }
+
+  /** Quantidade de encaixes de vértice pra baixo ainda vazios. */
+  get faltamParaBaixo(): number {
+    let total = 0;
+    for (const e of this.encaixes()) {
+      if (!Piramide.paraCima(e.index) && !this.ocupado(e.andar, e.index)) total++;
+    }
+    return total;
+  }
+
+  /**
+   * Pirâmide cheia: todos os triângulos de vértice pra cima estão presentes. Os
+   * de vértice pra baixo podem faltar — quando todo o contorno de vértices pra
+   * cima fecha, os vãos restantes ficam todos soterrados e nada mais entra.
+   */
   get cheia(): boolean {
+    for (const e of this.encaixes()) {
+      if (Piramide.paraCima(e.index) && !this.ocupado(e.andar, e.index)) return false;
+    }
+    return true;
+  }
+
+  /** Cheia com os 16 encaixes preenchidos: leva o bônus máximo. */
+  get cheiaCompleta(): boolean {
     return Piramide.ANDARES.every((def) => this.andarCompleto(def.andar));
   }
 
+  /**
+   * Cheia com pelo menos um vão de vértice pra baixo faltando. Basta um para a
+   * pirâmide ser considerada vazada — mas o bônus de vazada exige que não haja
+   * nenhum vértice pra baixo (ver `cheiaSoParaCima`).
+   */
   get cheiaVazada(): boolean {
-    const estadoTerreo = this.arraysIguais(this.terreo, [true, false, true, false, true, false, true]);
-    const estadoSegundoAndar = this.arraysIguais(this.segundoAndar, [true, false, true, false, true]);
-    const estadoTerceiroAndar = this.arraysIguais(this.terceiroAndar, [true, false, true]);
-    const estadoQuartoAndar = this.quartoAndar === true;
-    return estadoTerreo && estadoSegundoAndar && estadoTerceiroAndar && estadoQuartoAndar;
+    return this.cheia && this.faltamParaBaixo > 0;
   }
 
-  private arraysIguais(arr1: boolean[], arr2: boolean[]): boolean {
-    return arr1.length === arr2.length && arr1.every((value, index) => value === arr2[index]);
+  /** Vazada pura: os 10 de vértice pra cima e nenhum de vértice pra baixo. */
+  get cheiaSoParaCima(): boolean {
+    return this.cheia && this.quantidadeParaBaixo === 0;
+  }
+
+  /**
+   * Nenhum encaixe da pirâmide aceita mais trijolo, em qualquer estado — é a
+   * condição de fim de partida. Com as regras de apoio e soterramento isto
+   * equivale a `cheia`, mas a verificação é feita encaixe por encaixe para não
+   * depender dessa demonstração.
+   */
+  get travada(): boolean {
+    for (const e of this.encaixes()) {
+      if (this.livreParaReceber(e.andar, e.index)) return false;
+    }
+    return true;
   }
 
 }
