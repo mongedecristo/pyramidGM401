@@ -1,6 +1,16 @@
 import { ElementRef } from "@angular/core";
 import { Posicao } from "./jogo.component";
 
+/**
+ * Orientação de uma célula da matriz de triângulos. A matriz alterna a
+ * orientação a cada coluna E a cada linha, então ela é determinada pela
+ * paridade da soma. Verificado no SVG: `queops_7_00` e `queops_6_01` têm o
+ * vértice pra cima; `queops_7_01` e `queops_6_00`, pra baixo.
+ */
+export function orientacaoDaPosicao(posicao: Posicao): 'up' | 'down' {
+  return (posicao.linha + posicao.coluna) % 2 !== 0 ? 'up' : 'down';
+}
+
 export class Trijolo {
 
   id!: number;
@@ -9,10 +19,19 @@ export class Trijolo {
   destruir: boolean = false;
   posicaoAtual!: Posicao;
   triangulo!: ElementRef<SVGElement>;
-  orientacao: 'up' | 'down' = 'up'; // up = vértice pra cima, down = vértice pra baixo
 
-  constructor(init?: Partial<Trijolo>) {
+  constructor(init?: Partial<Omit<Trijolo, 'orientacao'>>) {
     Object.assign(this, init);
+  }
+
+  /**
+   * A orientação não é intrínseca ao trijolo: ela vem da célula que ele ocupa.
+   * Como a queda desloca a coluna em -1, 0 ou +1 a cada linha, o trijolo troca
+   * de orientação enquanto cai — igual ao LCD do relógio, em que "o triângulo
+   * que cai" é só a próxima célula acesa.
+   */
+  get orientacao(): 'up' | 'down' {
+    return orientacaoDaPosicao(this.posicaoAtual);
   }
 
   /**

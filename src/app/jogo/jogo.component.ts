@@ -4,7 +4,7 @@ import { Component, ElementRef, inject,
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { Trijolo } from './trijolo';
-import { Colocado, Piramide } from './piramide';
+import { Andar, Colocado, Piramide } from './piramide';
 
 export interface Posicao {
   linha: number;
@@ -19,11 +19,46 @@ export interface Posicao {
   styleUrls: ['./jogo.component.css'],
 })
 export class JogoComponent implements AfterViewInit, OnDestroy {
+  /**
+   * Cada pessoa fica exatamente sob um triângulo de vértice pra cima, e entre
+   * dois desses cabe um triângulo de vértice pra baixo. Logo, uma pessoa vale
+   * duas colunas da matriz de triângulos. `x` conta pessoas, `piramide.eixoX`
+   * conta colunas: a conversão entre as duas escalas é sempre este fator.
+   *
+   * Consequência crítica: `eixoX` tem de ser SEMPRE par. Numa coluna par a
+   * linha 7 tem um triângulo de vértice pra cima; numa coluna ímpar, de vértice
+   * pra baixo. Deslocar `eixoX` de 1 inverteria a orientação de todos os
+   * encaixes da pirâmide e a desmontaria.
+   */
+  private readonly COLUNAS_POR_PESSOA = 2;
+
+  /** 1 ponto por trijolo com vértice pra cima, 2 por vértice pra baixo. */
+  private readonly PONTOS_PARA_CIMA = 1;
+  private readonly PONTOS_PARA_BAIXO = 2;
+
+  /**
+   * Bônus por andar completo. O quarto andar não aparece aqui de propósito:
+   * empilhar o último trijolo é obrigatório para fechar a pirâmide, então ele
+   * não rende bônus de andar. Valores livres para calibrar.
+   */
+  private readonly BONUS_ANDAR: Partial<Record<Andar, number>> = {
+    terreo: 10,
+    segundoAndar: 20,
+    terceiroAndar: 30,
+  };
+  /** Pirâmide vazada: os 10 trijolos de vértice pra cima, nenhum pra baixo. */
+  private readonly BONUS_SO_PARA_CIMA = 50;
+  /** O maior de todos: os 16 encaixes preenchidos. */
+  private readonly BONUS_PIRAMIDE_COMPLETA = 100;
+
+  /** Cada bônus é concedido uma única vez por pirâmide. */
+  private bonusConcedidos = new Set<string>();
+
   @ViewChild('tabuleiro') meuTabuleiroSVG!: ElementRef<SVGSVGElement>;
   public router = inject(Router);
   public score: number = 0;
   public y: number = 0;
-  public x: number = 2; // Posição inicial da pirâmide (0 a 4)
+  public x: number = 2; // Posição inicial da pirâmide, em pessoas (0 a 4)
   public triangulo!: ElementRef<SVGElement>;
   public trijolo!: Trijolo;
   public contador: number = 0;
@@ -36,6 +71,15 @@ export class JogoComponent implements AfterViewInit, OnDestroy {
 
   constructor(private renderer2: Renderer2) {}
 
+  /**
+   * Converte um índice (ou um delta) da escala de pessoas para a escala de
+   * colunas da matriz de triângulos. O resultado é sempre par para índices
+   * absolutos, o que preserva a orientação de todos os encaixes da pirâmide.
+   */
+  private colunaDaPessoa(indicePessoa: number): number {
+    return indicePessoa * this.COLUNAS_POR_PESSOA;
+  }
+
   public comecaJogo() {
     // não iniciar lógica de jogo se não houver DOM (ex.: SSR)
     if (typeof document === 'undefined' || typeof window === 'undefined') {
@@ -43,17 +87,17 @@ export class JogoComponent implements AfterViewInit, OnDestroy {
     }
 
     this.trijolo = new Trijolo();
-    this.piramide = new Piramide({ eixoX: this.x });
+    this.piramide = new Piramide({ eixoX: this.colunaDaPessoa(this.x) });
     this.renderer2.listen(document, 'keydown', (e: KeyboardEvent) => {
       if (e.code === 'ArrowLeft') {
         // só permite mover para a esquerda se houver espaço
         if (this.x > 0) {
           const oldX = this.x;
           this.x--;
-          this.piramide.eixoX = this.x;
+          this.piramide.eixoX = this.colunaDaPessoa(this.x);
           this.atualizaVisibilidadePessoas();
           // reposiciona triângulo ativo (se estiver apoiado na plataforma)
-          this.moveTrianguloAtivoParaDelta(this.x - oldX);
+          this.moveTrianguloAtivoParaDelta(this.colunaDaPessoa(this.x - oldX));
           this.mostraTriangulosDaPiramide();
         }
       }
@@ -62,9 +106,9 @@ export class JogoComponent implements AfterViewInit, OnDestroy {
         if (this.x < 4) {
           const oldX = this.x;
           this.x++;
-          this.piramide.eixoX = this.x;
+          this.piramide.eixoX = this.colunaDaPessoa(this.x);
           this.atualizaVisibilidadePessoas();
-          this.moveTrianguloAtivoParaDelta(this.x - oldX);
+          this.moveTrianguloAtivoParaDelta(this.colunaDaPessoa(this.x - oldX));
           this.mostraTriangulosDaPiramide();
         }
       }
@@ -130,8 +174,7 @@ export class JogoComponent implements AfterViewInit, OnDestroy {
 
     // Mesmo se estiver ligeiramente fora da área, o trijolo pode deslizar para
     // dentro de um encaixe válido. A própria pirâmide valida os limites.
-    const shifts = [0, -1, 1, -2, 2];
-    for (const deslocamento of shifts) {
+    for (const deslocamento of this.ordemDeDeslize()) {
       const candidata: Posicao = {
         linha: proximaPosicao.linha,
         coluna: proximaPosicao.coluna + deslocamento,
@@ -144,6 +187,23 @@ export class JogoComponent implements AfterViewInit, OnDestroy {
     }
 
     return false;
+  }
+
+  /**
+   * Ordem em que o trijolo tenta deslizar para achar encaixe: primeiro a
+   * própria coluna, depois uma coluna para cada lado, depois duas. A distância
+   * continua sendo o critério principal — deslizar 2 quando 1 resolve pareceria
+   * um salto —, mas o LADO é sorteado a cada tentativa. A lista fixa
+   * `[0, -1, 1, -2, 2]` fazia o trijolo preferir sempre a esquerda, o que
+   * enviesava visivelmente a formação da pirâmide.
+   */
+  private ordemDeDeslize(): number[] {
+    const ordem: number[] = [0];
+    for (const distancia of [1, 2]) {
+      const primeiro = Math.random() < 0.5 ? -distancia : distancia;
+      ordem.push(primeiro, -primeiro);
+    }
+    return ordem;
   }
 
   /**
@@ -184,34 +244,12 @@ export class JogoComponent implements AfterViewInit, OnDestroy {
       return;
     }
 
-    // Determina a posição real (linha/coluna) onde o triângulo foi fixado
-    let colocadaLinha = 7;
-    let colocadaColuna = this.piramide.eixoX + (result.index ?? 0);
-    switch (result.layer) {
-      case 'terreo':
-        colocadaLinha = 7;
-        colocadaColuna = this.piramide.eixoX + (result.index ?? 0);
-        this.score += 1; // base: 1 ponto
-        break;
-      case 'segundoAndar':
-        colocadaLinha = 6;
-        colocadaColuna = this.piramide.eixoX + 1 + (result.index ?? 0);
-        this.score += 2;
-        break;
-      case 'terceiroAndar':
-        colocadaLinha = 5;
-        colocadaColuna = this.piramide.eixoX + 2 + (result.index ?? 0);
-        this.score += 3;
-        break;
-      case 'quartoAndar':
-        colocadaLinha = 4;
-        colocadaColuna = this.piramide.eixoX + 3;
-        this.score += 4;
-        break;
-    }
+    // Pontuação do trijolo, pela orientação do encaixe em que ele ficou.
+    this.score += result.paraCima ? this.PONTOS_PARA_CIMA : this.PONTOS_PARA_BAIXO;
+    this.somaBonus(result.layer!);
 
     // Registra posição ocupada (informativo)
-    this.posicoesOcupadas.push({ linha: colocadaLinha, coluna: colocadaColuna });
+    this.posicoesOcupadas.push(result.posicao!);
     this.trijolo.fixo = true;
     this.trijolo.colisao = true;
     this.trijolo.destruir = true; // sinaliza que o trijolo atual pode ser substituído
@@ -222,6 +260,33 @@ export class JogoComponent implements AfterViewInit, OnDestroy {
 
     console.log('Score: ', this.score);
     console.log('Posições ocupadas: ', this.posicoesOcupadas);
+  }
+
+  /**
+   * Confere os bônus depois de fixar um trijolo. Como os andares só ganham
+   * trijolos (nunca perdem), conferir logo após a colocação pega cada conclusão
+   * no exato momento em que ela acontece.
+   */
+  private somaBonus(andar: Andar) {
+    const bonusDoAndar = this.BONUS_ANDAR[andar];
+    if (bonusDoAndar && this.piramide.andarCompleto(andar)) {
+      this.concedeBonus(`andar:${andar}`, bonusDoAndar);
+    }
+    // A vazada deixa de ser verdadeira no instante em que entra um trijolo de
+    // vértice pra baixo, por isso ela é testada a cada colocação.
+    if (this.piramide.cheiaVazada) {
+      this.concedeBonus('vazada', this.BONUS_SO_PARA_CIMA);
+    }
+    if (this.piramide.cheia) {
+      this.concedeBonus('completa', this.BONUS_PIRAMIDE_COMPLETA);
+    }
+  }
+
+  private concedeBonus(chave: string, pontos: number) {
+    if (this.bonusConcedidos.has(chave)) return;
+    this.bonusConcedidos.add(chave);
+    this.score += pontos;
+    console.log(`Bônus ${chave}: +${pontos}`);
   }
 
   public quedaCompleta() {
@@ -349,31 +414,23 @@ export class JogoComponent implements AfterViewInit, OnDestroy {
     // Esconde todos os triângulos da pirâmide em qualquer posição antes de mostrar a nova
     this.escondeTriangulosDaPiramide();
 
-    for (let i = 0; i < 7; i++) {
-      this.triangulo = this.acessarTriangulo(this.triangulos, 7, this.piramide.eixoX + i);
-      if (this.triangulo !== null && this.triangulo.nativeElement.id > '' && this.piramide.terreo[i]) {
-        this.triangulo.nativeElement.classList.remove('fil_none');
-        this.triangulo.nativeElement.classList.add('fil3');
+    // A geometria de cada andar (linha, offset e largura) vive só em
+    // Piramide.ANDARES. Repeti-la aqui foi a origem do desalinhamento entre a
+    // pirâmide e as pessoas.
+    for (const def of Piramide.ANDARES) {
+      for (let i = 0; i < def.largura; i++) {
+        if (!this.piramide.ocupado(def.andar, i)) continue;
+        const posicao = this.piramide.posicaoDe(def.andar, i);
+        const tri = this.acessarTriangulo(this.triangulos, posicao.linha, posicao.coluna);
+        if (tri && tri.nativeElement && tri.nativeElement.id > '') {
+          tri.nativeElement.classList.remove('fil_none');
+          tri.nativeElement.classList.add('fil3');
+          // A rotina de queda esconde células via `style.visibility`; sem
+          // limpar isso, um trijolo fixado numa célula já usada ficaria
+          // invisível apesar da classe correta.
+          tri.nativeElement.style.visibility = 'visible';
+        }
       }
-    }
-    for (let i = 0; i < 5; i++) {
-      this.triangulo = this.acessarTriangulo(this.triangulos, 6, this.piramide.eixoX + 1 + i);
-      if (this.triangulo !== null && this.triangulo.nativeElement.id > '' && this.piramide.segundoAndar[i]) {
-        this.triangulo.nativeElement.classList.remove('fil_none');
-        this.triangulo.nativeElement.classList.add('fil3');
-      }
-    }
-    for (let i = 0; i < 3; i++) {
-      this.triangulo = this.acessarTriangulo(this.triangulos, 5, this.piramide.eixoX + 2 + i);
-      if (this.triangulo !== null && this.triangulo.nativeElement.id > '' && this.piramide.terceiroAndar[i]) {
-        this.triangulo.nativeElement.classList.remove('fil_none');
-        this.triangulo.nativeElement.classList.add('fil3');
-      }
-    }
-    this.triangulo = this.acessarTriangulo(this.triangulos, 4, this.piramide.eixoX + 3);
-    if (this.triangulo !== null && this.triangulo.nativeElement.id > '' && this.piramide.quartoAndar) {
-      this.triangulo.nativeElement.classList.remove('fil_none');
-      this.triangulo.nativeElement.classList.add('fil3');
     }
     if (this.piramide.cheia) {
       console.log('PIRÂMIDE CHEIA!!!');
@@ -384,40 +441,24 @@ export class JogoComponent implements AfterViewInit, OnDestroy {
   }
 
   /**
-   * Esconde todos os triângulos que compõem a pirâmide em qualquer posição
+   * Esconde todos os triângulos que compõem a pirâmide em qualquer posição.
+   *
+   * Como `eixoX` percorre as colunas pares 0..8 e o térreo ocupa `eixoX+6`, a
+   * pirâmide pode ocupar qualquer coluna de 0 a 14 nas linhas 4 a 7 — por isso
+   * a limpeza varre a faixa inteira. O trijolo que está caindo é preservado:
+   * ele não pertence à pirâmide e é redesenhado pela rotina de queda.
    */
   private escondeTriangulosDaPiramide() {
-    // Esconde todos os possíveis triângulos da pirâmide para todas as posições de x (0-4)
-    for (let x = 0; x <= 4; x++) {
-      // Terreo (linha 7, 7 colunas)
-      for (let i = 0; i < 7; i++) {
-        const tri = this.acessarTriangulo(this.triangulos, 7, x + i);
+    const ativa = this.trijolo && !this.trijolo.fixo ? this.trijolo.posicaoAtual : undefined;
+
+    for (let linha = 4; linha <= 7; linha++) {
+      for (let coluna = 0; coluna < 15; coluna++) {
+        if (ativa && ativa.linha === linha && ativa.coluna === coluna) continue;
+        const tri = this.acessarTriangulo(this.triangulos, linha, coluna);
         if (tri && tri.nativeElement && tri.nativeElement.id > '') {
           tri.nativeElement.classList.remove('fil3');
           tri.nativeElement.classList.add('fil_none');
         }
-      }
-      // Segundo andar (linha 6, 5 colunas)
-      for (let i = 0; i < 5; i++) {
-        const tri = this.acessarTriangulo(this.triangulos, 6, x + 1 + i);
-        if (tri && tri.nativeElement && tri.nativeElement.id > '') {
-          tri.nativeElement.classList.remove('fil3');
-          tri.nativeElement.classList.add('fil_none');
-        }
-      }
-      // Terceiro andar (linha 5, 3 colunas)
-      for (let i = 0; i < 3; i++) {
-        const tri = this.acessarTriangulo(this.triangulos, 5, x + 2 + i);
-        if (tri && tri.nativeElement && tri.nativeElement.id > '') {
-          tri.nativeElement.classList.remove('fil3');
-          tri.nativeElement.classList.add('fil_none');
-        }
-      }
-      // Quarto andar (linha 4, 1 coluna)
-      const triQuarto = this.acessarTriangulo(this.triangulos, 4, x + 3);
-      if (triQuarto && triQuarto.nativeElement && triQuarto.nativeElement.id > '') {
-        triQuarto.nativeElement.classList.remove('fil3');
-        triQuarto.nativeElement.classList.add('fil_none');
       }
     }
   }
