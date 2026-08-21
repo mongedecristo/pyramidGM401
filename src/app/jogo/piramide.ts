@@ -4,11 +4,8 @@ export type Andar = 'terreo' | 'segundoAndar' | 'terceiroAndar' | 'quartoAndar';
 
 export interface DefinicaoAndar {
   andar: Andar;
-  /** Linha da matriz de triângulos em que o andar é desenhado. */
   linha: number;
-  /** Deslocamento da primeira coluna do andar em relação a `eixoX`. */
   offset: number;
-  /** Quantidade de encaixes do andar. */
   largura: number;
 }
 
@@ -16,13 +13,10 @@ export interface Colocado {
   colocado: boolean;
   layer?: Andar;
   index?: number;
-  /** Célula da matriz onde o trijolo ficou fixado. */
   posicao?: Posicao;
-  /** true quando o trijolo colocado tem o vértice pra cima. */
   paraCima?: boolean;
 }
 
-/** Encaixe da pirâmide correspondente a uma célula da matriz de triângulos. */
 interface Encaixe {
   andar: Andar;
   index: number;
@@ -50,11 +44,9 @@ export class Piramide {
 
   colisao: boolean = false;
   eixoX!: number;
-  quartoAndar: boolean = false;
-  terceiroAndar: boolean[] = [false, false, false];
+  quartoAndar: boolean =                   false;
+  terceiroAndar: boolean[] =       [false, false, false];
   segundoAndar: boolean[] = [false, false, false, false, false];
-  // Os sete espaços do térreo começam vazios. Eles são sustentados pela base
-  // formada pelas quatro pessoas, não por trijolos já existentes.
   terreo: boolean[] = [false, false, false, false, false, false, false];
 
   constructor(init?: Partial<Piramide>) {

@@ -19,6 +19,9 @@ export interface Posicao {
   styleUrls: ['./jogo.component.css'],
 })
 export class JogoComponent implements AfterViewInit, OnDestroy {
+
+  public readonly VIDAS_INICIAIS = 3;
+  
   /**
    * Cada pessoa fica exatamente sob um triângulo de vértice pra cima, e entre
    * dois desses cabe um triângulo de vértice pra baixo. Logo, uma pessoa vale
@@ -70,7 +73,6 @@ export class JogoComponent implements AfterViewInit, OnDestroy {
   public posicoesOcupadas: Posicao[] = []; // Adicionado para rastrear a pirâmide
 
   /** Vidas iniciais. Cada trijolo que cai no chão sem encaixar consome uma. */
-  public readonly VIDAS_INICIAIS = 3;
   public vidas: number = this.VIDAS_INICIAIS;
   public fimDeJogo: boolean = false;
   public motivoFimDeJogo: string = '';
