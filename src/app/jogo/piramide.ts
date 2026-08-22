@@ -1,26 +1,5 @@
-import { Posicao } from './jogo.component';
-
-export type Andar = 'terreo' | 'segundoAndar' | 'terceiroAndar' | 'quartoAndar';
-
-export interface DefinicaoAndar {
-  andar: Andar;
-  linha: number;
-  offset: number;
-  largura: number;
-}
-
-export interface Colocado {
-  colocado: boolean;
-  layer?: Andar;
-  index?: number;
-  posicao?: Posicao;
-  paraCima?: boolean;
-}
-
-interface Encaixe {
-  andar: Andar;
-  index: number;
-}
+import { Andar, Colocado, DefinicaoAndar } from '../shared/types';
+import { Posicao, Encaixe } from '../shared/types';
 
 export class Piramide {
 

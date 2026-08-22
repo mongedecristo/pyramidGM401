@@ -1,5 +1,5 @@
 import { ElementRef } from "@angular/core";
-import { Posicao } from "./jogo.component";
+import { Posicao } from '../shared/types';
 
 /**
  * Orientação de uma célula da matriz de triângulos. A matriz alterna a
@@ -46,9 +46,7 @@ export class Trijolo {
 
   public avancaPosicao(ref: ElementRef<SVGElement>[]): void {
     let q = this.queops(this.posicaoAtual);
-    this.triangulo= <NonNullable<ElementRef<SVGElement>>> (ref.find(
-      (queops) => queops.nativeElement.id == q)
-    );
+    this.triangulo= <NonNullable<ElementRef<SVGElement>>> (ref.find((queops) => queops.nativeElement.id == q));
     this.triangulo.nativeElement.classList.remove('fil3');
     this.triangulo.nativeElement.classList.add('fil_none');
 

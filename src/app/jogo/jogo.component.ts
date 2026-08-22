@@ -1,15 +1,11 @@
 import { Component, ElementRef, inject,
-          AfterViewInit, OnInit,  OnDestroy,
+          AfterViewInit, OnDestroy,
           Renderer2, ViewChild} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { Trijolo } from './trijolo';
-import { Andar, Colocado, Piramide } from './piramide';
-
-export interface Posicao {
-  linha: number;
-  coluna: number;
-}
+import { Piramide } from './piramide';
+import { Andar, Colocado, Posicao } from '../shared/types';
 
 @Component({
   selector: 'app-jogo',
@@ -21,7 +17,7 @@ export interface Posicao {
 export class JogoComponent implements AfterViewInit, OnDestroy {
 
   public readonly VIDAS_INICIAIS = 3;
-  
+
   /**
    * Cada pessoa fica exatamente sob um triângulo de vértice pra cima, e entre
    * dois desses cabe um triângulo de vértice pra baixo. Logo, uma pessoa vale
